@@ -1,0 +1,362 @@
+openapi: 3.0.3
+
+info:
+  title: 商品情報 REST API
+  description: |-
+    ECサイト（ラクラクカリー）の商品情報を外部システムへ提供するためのREST API。
+
+    ## 概要
+    - 商品一覧・商品詳細をJSON形式で取得可能。
+    - 本APIは参照専用APIのため、GETメソッドのみを提供する（認証は不要）。
+    - 商品一覧APIでは、商品名による検索も可能。
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api
+    description: ローカル開発環境
+
+  # 本番環境URLが確定した際に追加する
+  # - url: https://api.example.com
+  #   description: 本番環境
+
+  # ステージング環境が確定した際に追加する
+  # - url: https://staging.example.com
+  #   description: ステージング環境
+
+tags:
+  - name: items
+    description: 商品情報
+
+# ============================================================
+# Paths
+# ============================================================
+paths:
+  # ============================================================
+  # Items - 商品情報
+  # ============================================================
+
+  /items:
+    get:
+      tags:
+        - items
+      summary: 商品一覧取得・検索
+      description: |-
+        登録済みの商品一覧を取得する。
+        クエリパラメータ `name` を指定した場合は、商品名の部分一致検索を行う。
+        `name` を未指定または空文字列の場合は全件を返却する。
+        論理削除済み（`deleted = true`）の商品は返却しない。
+        該当する商品が存在しない場合は空配列を返却する。
+      operationId: getItems
+
+      # ------------------------------------------------------------
+      # Parameters
+      # name: 商品名検索用の任意パラメータ
+      # 未指定または空文字列の場合は全件取得
+      # ------------------------------------------------------------
+      parameters:
+        - name: name
+          in: query
+          description: |-
+            商品名（部分一致検索）。
+            未指定または空文字列の場合は全件を返却する。
+          required: false
+          schema:
+            type: string
+            example: カレー
+
+      responses:
+        "200":
+          description: 商品一覧の取得に成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemSummary"
+              examples:
+                success:
+                  summary: 正常取得例（全件）
+                  value:
+                    - id: 1
+                      name: カツカレー
+                      priceM: 1490
+                      priceL: 2570
+                      imagePath: /img_curry/1.jpg
+                    - id: 2
+                      name: ポークポークカレー・ミート
+                      priceM: 1490
+                      priceL: 2570
+                      imagePath: /img_curry/2.jpg
+                searchSuccess:
+                  summary: 検索結果あり
+                  value:
+                    - id: 1
+                      name: カツカレー
+                      priceM: 1490
+                      priceL: 2570
+                      imagePath: /img_curry/1.jpg
+                searchNoResult:
+                  summary: 検索結果なし（キーワードに一致する商品が存在しない）
+                  value: []
+                empty:
+                  summary: 商品が1件も登録されていない場合
+                  value: []
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /items/{id}:
+    get:
+      tags:
+        - items
+      summary: 商品詳細取得
+      description: |-
+        指定した商品IDの商品詳細情報を取得する。
+        レスポンスには、商品情報に加えて注文時に選択可能なトッピング一覧を含む。
+        トッピング一覧は全商品共通のトッピングマスタから取得する。
+        論理削除済み（`deleted = true`）の商品は返却しない（404を返却する）。
+        指定した商品IDに対応する商品が存在しない場合は404を返却する。
+      operationId: getItemById
+
+      # ------------------------------------------------------------
+      # Parameters
+      # id: 取得対象の商品ID
+      # 1以上の整数を指定する
+      # ------------------------------------------------------------
+      parameters:
+        - name: id
+          in: path
+          description: 取得する商品のID（1以上の整数）
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+
+      responses:
+        "200":
+          description: 商品詳細の取得に成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemDetail"
+              examples:
+                success:
+                  summary: 正常取得例
+                  value:
+                    id: 1
+                    name: カツカレー
+                    description: 食べると勝負に勝てると言われる勝つカレー。ラクラクカレー定番の１品です
+                    priceM: 1490
+                    priceL: 2570
+                    imagePath: /img_curry/1.jpg
+                    toppings:
+                      - id: 1
+                        name: オニオン
+                        priceM: 200
+                        priceL: 300
+                      - id: 2
+                        name: ツナマヨ
+                        priceM: 200
+                        priceL: 300
+                noToppings:
+                  summary: トッピングが1件も登録されていない場合
+                  value:
+                    id: 1
+                    name: カツカレー
+                    description: 食べると勝負に勝てると言われる勝つカレー。ラクラクカレー定番の１品です
+                    priceM: 1490
+                    priceL: 2570
+                    imagePath: /img_curry/1.jpg
+                    toppings: []
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+# ============================================================
+# Components
+# ============================================================
+components:
+  # ============================================================
+  # Schemas
+  # ============================================================
+  schemas:
+    # ------------------------------------------------------------
+    # 商品一覧取得APIで返却する商品概要
+    # ------------------------------------------------------------
+    ItemSummary:
+      type: object
+      description: 商品一覧用の概要情報
+      properties:
+        id:
+          type: integer
+          description: 商品ID
+          example: 1
+        name:
+          type: string
+          description: 商品名
+          example: カツカレー
+        priceM:
+          type: integer
+          description: Mサイズの価格（円）
+          example: 1490
+        priceL:
+          type: integer
+          description: Lサイズの価格（円）
+          example: 2570
+        imagePath:
+          type: string
+          description: |-
+            商品画像の相対パス。
+            実際の画像URLはベースURL（例: http://localhost:8080）と結合して使用する。
+          example: /img_curry/1.jpg
+      required:
+        - id
+        - name
+        - priceM
+        - priceL
+        - imagePath
+
+    # ------------------------------------------------------------
+    # 商品詳細取得APIで返却する商品詳細情報
+    # トッピング一覧を含む（全商品共通のトッピングマスタから取得）
+    # ------------------------------------------------------------
+    ItemDetail:
+      type: object
+      description: 商品詳細情報（選択可能なトッピング一覧を含む）
+      properties:
+        id:
+          type: integer
+          description: 商品ID
+          example: 1
+        name:
+          type: string
+          description: 商品名
+          example: カツカレー
+        description:
+          type: string
+          description: 商品説明
+          nullable: true
+          example: 食べると勝負に勝てると言われる勝つカレー。ラクラクカレー定番の１品です
+        priceM:
+          type: integer
+          description: Mサイズの価格（円）
+          example: 1490
+        priceL:
+          type: integer
+          description: Lサイズの価格（円）
+          example: 2570
+        imagePath:
+          type: string
+          description: |-
+            商品画像の相対パス。
+            実際の画像URLはベースURL（例: http://localhost:8080）と結合して使用する。
+          example: /img_curry/1.jpg
+        toppings:
+          type: array
+          description: |-
+            注文時に選択可能なトッピング一覧。
+            全商品共通のトッピングマスタから取得する。
+            トッピングが1件も登録されていない場合は空配列を返却する。
+          items:
+            $ref: "#/components/schemas/Topping"
+      required:
+        - id
+        - name
+        - description
+        - priceM
+        - priceL
+        - imagePath
+        - toppings
+
+    # ------------------------------------------------------------
+    # 商品詳細取得APIで返却するトッピング情報
+    # ------------------------------------------------------------
+    Topping:
+      type: object
+      description: 商品詳細取得APIで返却するトッピング情報
+      properties:
+        id:
+          type: integer
+          description: トッピングID
+          example: 1
+        name:
+          type: string
+          description: トッピング名
+          example: オニオン
+        priceM:
+          type: integer
+          description: Mサイズの価格（円）
+          example: 200
+        priceL:
+          type: integer
+          description: Lサイズの価格（円）
+          example: 300
+      required:
+        - id
+        - name
+        - priceM
+        - priceL
+
+    # ------------------------------------------------------------
+    # 共通エラーレスポンス
+    # ------------------------------------------------------------
+    ErrorResponse:
+      type: object
+      description: エラーレスポンス
+      properties:
+        status:
+          type: integer
+          description: HTTPステータスコード
+          example: 404
+        message:
+          type: string
+          description: エラーメッセージ
+          example: 指定した商品が存在しません
+      required:
+        - status
+        - message
+
+  # ============================================================
+  # Responses
+  # ============================================================
+  responses:
+    # ------------------------------------------------------------
+    # 404 Not Found
+    # 指定した商品IDに対応する商品が存在しない、
+    # または論理削除済みの場合
+    # ------------------------------------------------------------
+    NotFound:
+      description: 指定した商品が存在しない
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            itemNotFound:
+              summary: 該当商品なし（IDが存在しない場合）
+              value:
+                status: 404
+                message: 指定した商品が存在しません
+            itemDeleted:
+              summary: 論理削除済み商品を指定した場合（404として扱う）
+              value:
+                status: 404
+                message: 指定した商品が存在しません
+
+    # ------------------------------------------------------------
+    # 500 Internal Server Error
+    # 想定外例外、DB接続障害など
+    # ------------------------------------------------------------
+    InternalServerError:
+      description: サーバー内部エラー
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            internalError:
+              summary: サーバーエラー
+              value:
+                status: 500
+                message: サーバー内部エラーが発生しました

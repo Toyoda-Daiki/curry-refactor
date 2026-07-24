@@ -1,0 +1,21 @@
+spring:
+  config:
+   import: optional:file:.env[.properties]
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:rakuraku-curry-test}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+
+logging:
+  file:
+    name: ${LOG_FILE_PATH:curry.log}
+
+# 商品一覧の画像のURLにsessionidが勝手に混入し画像がリンク切れになる不具合対応の設定
+server:
+  servlet:
+    session:
+      tracking-modes: cookie

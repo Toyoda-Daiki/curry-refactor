@@ -1,0 +1,39 @@
+/* リファクタリング課題#13 動的フォーム用スタイル */
+
+.address-row {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.remove-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.remove-btn:hover {
+  background-color: #c0392b;
+}
+
+#addAddressBtn {
+  width: 100%;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+#addAddressBtn:hover {
+  background-color: #2980b9;
+}

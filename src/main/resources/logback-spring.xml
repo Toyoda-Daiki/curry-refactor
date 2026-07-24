@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ============================= -->
+    <!-- 共通ログパターン
+         ログフォーマットを共通プロパティ化し、Appenderごとの重複を避ける -->
+    <!-- ============================= -->
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger - %msg%n" />
+
+
+    <!-- ============================= -->
+    <!-- コンソール出力 -->
+    <!-- ============================= -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+
+    <!-- ============================= -->
+    <!-- dev環境 -->
+    <!-- ============================= -->
+    <springProfile name="dev">
+
+        <!-- ファイル出力 -->
+        <appender name="FILE"
+                  class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+            <file>logs/curry-app-dev.log</file>
+
+            <rollingPolicy
+                    class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+
+                <!-- 日別ログ -->
+                <fileNamePattern>logs/curry-app-dev.%d{yyyy-MM-dd}.log</fileNamePattern>
+
+                <!-- 30日保存 -->
+                <maxHistory>30</maxHistory>
+
+            </rollingPolicy>
+
+            <encoder>
+                <pattern>${LOG_PATTERN}</pattern>
+            </encoder>
+
+        </appender>
+
+
+        <!-- ERROR時メール送信 -->
+        <appender name="EMAIL"
+                  class="ch.qos.logback.classic.net.SMTPAppender">
+
+            <!-- SMTP -->
+            <smtpHost>localhost</smtpHost>
+            <smtpPort>1025</smtpPort>
+
+            <!-- Mailpitなど想定 -->
+            <SSL>false</SSL>
+            <STARTTLS>false</STARTTLS>
+
+            <!-- メール -->
+            <from>system-error@example.com</from>
+            <to>admin@example.com</to>
+            <to>operator@example.com</to>
+            <subject>【ラクラクカリー】エラーが発生しました</subject>
+
+            <!-- ERRORレベル以上で送信 -->
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>ERROR</level>
+            </filter>
+
+            <evaluator class="ch.qos.logback.classic.boolex.OnErrorEvaluator" />
+
+            <asynchronousSending>false</asynchronousSending>
+
+            <layout class="ch.qos.logback.classic.PatternLayout">
+                <pattern>${LOG_PATTERN}</pattern>
+            </layout>
+
+        </appender>
+
+
+        <!-- Root Logger -->
+        <root level="INFO">
+
+            <!-- コンソール -->
+            <appender-ref ref="CONSOLE" />
+
+            <!-- ファイル -->
+            <appender-ref ref="FILE" />
+
+            <!-- メール -->
+            <appender-ref ref="EMAIL" />
+
+        </root>
+
+    </springProfile>
+
+
+    <!-- ============================= -->
+    <!-- prod環境 -->
+    <!-- ============================= -->
+    <springProfile name="prod">
+
+        <!-- Tomcatのlogsディレクトリ配下にログを出力する。
+             LOG_FILE_PATH が設定されている場合はその値を使用し、
+             未設定の場合は ${catalina.base}/logs を使用する -->
+        <property name="TOMCAT_LOG_PATH"
+                  value="${LOG_FILE_PATH:-${catalina.base}/logs}" />
+
+        <!-- 本番ログ（ファイル出力） -->
+        <appender name="FILE_PROD"
+                  class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+            <file>${TOMCAT_LOG_PATH}/curry-app-prod.log</file>
+
+            <rollingPolicy
+                    class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>${TOMCAT_LOG_PATH}/curry-app-prod.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>30</maxHistory>
+            </rollingPolicy>
+
+            <encoder>
+                <pattern>${LOG_PATTERN}</pattern>
+            </encoder>
+        </appender>
+
+
+        <!-- 本番エラー通知メール -->
+        <appender name="EMAIL_PROD"
+                  class="ch.qos.logback.classic.net.SMTPAppender">
+
+            <!-- 本番では環境変数でSMTPサーバ情報を設定する -->
+            <smtpHost>${SMTP_HOST}</smtpHost>
+            <smtpPort>${SMTP_PORT}</smtpPort>
+
+            <!-- SMTPサーバが認証を要求する場合は、以下認証情報を設定する -->
+            <!--
+            <username>${SMTP_USERNAME}</username>
+            <password>${SMTP_PASSWORD}</password>
+            -->
+
+            <!-- SMTPサーバ仕様に応じて切り替える -->
+            <SSL>${SMTP_SSL:-false}</SSL>
+            <STARTTLS>${SMTP_STARTTLS:-true}</STARTTLS>
+
+            <from>system-error@example.com</from>
+            <to>team-e@example.com</to>
+            <subject>【本番エラー通知】curry-appでエラー発生</subject>
+
+            <!-- ERRORレベル以上で送信 -->
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>ERROR</level>
+            </filter>
+
+            <evaluator class="ch.qos.logback.classic.boolex.OnErrorEvaluator" />
+
+            <asynchronousSending>false</asynchronousSending>
+
+            <layout class="ch.qos.logback.classic.PatternLayout">
+                <pattern>${LOG_PATTERN}</pattern>
+            </layout>
+        </appender>
+
+
+        <!-- Root Logger -->
+        <root level="INFO">
+
+            <!-- コンソール -->
+            <appender-ref ref="CONSOLE" />
+
+            <!-- ファイル -->
+            <appender-ref ref="FILE_PROD" />
+
+            <!-- メール -->
+            <appender-ref ref="EMAIL_PROD" />
+
+        </root>
+
+    </springProfile>
+
+</configuration>

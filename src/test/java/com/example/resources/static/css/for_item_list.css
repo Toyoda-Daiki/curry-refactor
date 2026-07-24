@@ -1,0 +1,17 @@
+@charset "UTF-8";
+
+div.pagination {
+	font-size:40px;
+	color:green;
+}
+tbody.table{
+	display:flex;
+}
+div.text-center-2{
+	text-align: center;
+	padding: 70px 300px;
+}
+div.text-center-3{
+	display:flex;
+}
+

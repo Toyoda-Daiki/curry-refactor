@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>配送先住所登録</title>
+  <link th:href="@{/css/bootstrap.css}" rel="stylesheet" />
+  <link th:href="@{/css/curry.css}" rel="stylesheet" />
+  <link th:href="@{/css/address_form.css}" rel="stylesheet" />
+</head>
+
+<body>
+  <div class="container">
+    <span th:insert="header::header"></span>
+    <h3 class="text-center" style="margin: 20px 0;">配送先住所登録</h3>
+
+    <form th:action="@{/address/register}" method="post" id="addressForm">
+      <div id="addressContainer">
+        <div class="address-row">
+          <div class="row">
+            <div class="col-xs-5">
+              <input type="text" name="addresses[0].name" class="form-control" placeholder="氏名" />
+            </div>
+            <div class="col-xs-5">
+              <input type="text" name="addresses[0].tel" class="form-control" placeholder="電話番号（例：090-1234-5678）" />
+            </div>
+            <div class="col-xs-2 text-center">
+              <button type="button" class="remove-btn">×</button>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 8px;">
+            <div class="col-xs-10">
+              <input type="text" name="addresses[0].address" class="form-control" placeholder="住所（例：千葉県浦安市舞浜1-1）" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" id="addAddressBtn">＋ 住所を追加</button>
+
+      <div class="text-center">
+        <input type="submit" class="btn btn-warning btn-lg" value="登録する" />
+      </div>
+    </form>
+  </div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script th:src="@{/js/bootstrap.min.js}"></script>
+  <!-- リファクタリング課題#13・#36 動的フォーム・イベント委譲 -->
+  <script th:src="@{/js/address_form.js}"></script>
+</body>
+
+</html>

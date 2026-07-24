@@ -1,0 +1,40 @@
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:rakuraku-curry}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+  ai:
+    openai:
+      api-key: ${CEREBRAS_API_KEY}
+      base-url: https://api.cerebras.ai
+      chat:
+        options:
+          model: llama3.1-8b
+          temperature: 0.0
+  http:
+    client:
+      factory: http-components
+  cache:
+    type: simple
+
+logging:
+  file:
+    name: ${LOG_FILE_PATH:curry.log}
+  level:
+    "[org.springframework.jdbc.core]": DEBUG
+
+  # 商品一覧の画像のURLにsessionidが勝手に混入し画像がリンク切れになる不具合対応の設定
+server:
+  servlet:
+    session:
+      tracking-modes: cookie
+
+mail:
+  from: curry-admin@example.com
+  subject: 【ラクラクカリー】ご注文ありがとうございました

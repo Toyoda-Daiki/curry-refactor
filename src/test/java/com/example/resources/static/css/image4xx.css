@@ -1,0 +1,28 @@
+@charset "UTF-8";
+
+.box{
+	width: 100%;
+	height: 550px;
+	 background-color: rgba( 0, 0, 0, 0.5); /* 背景色を半透明の黒にする */
+}
+
+.btnlink{
+	margin-left: 470px;
+}
+
+.linktext {
+	color: #ffffff;
+}
+
+#text404 {
+	color: #ffffff;
+	padding-top: 230px;
+}
+
+.image404 {
+	background-image: url(../img_curry/spices-g9ba073ee0_1920.jpg);
+	background-size: cover;
+	width: 100%;
+	height: 550px;
+	margin-top: 30px;
+}

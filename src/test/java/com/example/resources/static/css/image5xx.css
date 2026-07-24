@@ -1,0 +1,28 @@
+@charset "UTF-8";
+
+.box500{
+	width: 100%;
+	height: 550px;
+	 background-color: rgba( 0, 0, 0, 0.5); /* 背景色を半透明の黒にする */
+}
+
+.btnlink500{
+	margin-left: 470px;
+}
+
+.linktext500 {
+	color: #ffffff;
+}
+
+#text500 {
+	color: #ffffff;
+	padding-top: 230px;
+}
+
+.image500 {
+	background-image: url(../img_curry/thai-curry-gdd54bc2e6_1920.jpg);
+	background-size: cover;
+	width: 100%;
+	height: 550px;
+	margin-top: 30px;
+}
