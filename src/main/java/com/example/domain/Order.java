@@ -47,8 +47,8 @@ public class Order {
 	}
 
 	// 既存コードとの互換性のため引数なしコンストラクタも残す
-	public Order() {
-	}
+	// public Order() {
+	// }
 
 	// Builderを取得するstaticメソッド
 	public static Builder builder() {
@@ -176,90 +176,90 @@ public class Order {
 		return userId;
 	}
 
-	public void setUserId(Integer userId) {
-		this.userId = userId;
-	}
+	// public void setUserId(Integer userId) {
+	// 	this.userId = userId;
+	// }
 
 	public OrderStatus getStatus() {
 		return status;
 	}
 
 	// リファクタリング課題#1 statusをOrderStatus enumに変更
-	public void setStatus(OrderStatus status) {
-		this.status = status;
-	}
+	// public void setStatus(OrderStatus status) {
+	// 	this.status = status;
+	// }
 
 	public Integer getTotalPrice() {
 		return totalPrice;
 	}
 
-	public void setTotalPrice(Integer totalPrice) {
-		this.totalPrice = totalPrice;
-	}
+	// public void setTotalPrice(Integer totalPrice) {
+	// 	this.totalPrice = totalPrice;
+	// }
 
 	public Date getOrderDate() {
 		return orderDate;
 	}
 
-	public void setOrderDate(Date orderDate) {
-		this.orderDate = orderDate;
-	}
+	// public void setOrderDate(Date orderDate) {
+	// 	this.orderDate = orderDate;
+	// }
 
 	public String getDestinationName() {
 		return destinationName;
 	}
 
-	public void setDestinationName(String destinationName) {
-		this.destinationName = destinationName;
-	}
+	// public void setDestinationName(String destinationName) {
+	// 	this.destinationName = destinationName;
+	// }
 
 	public String getDestinationEmail() {
 		return destinationEmail;
 	}
 
-	public void setDestinationEmail(String destinationEmail) {
-		this.destinationEmail = destinationEmail;
-	}
+	// public void setDestinationEmail(String destinationEmail) {
+	// 	this.destinationEmail = destinationEmail;
+	// }
 
 	public String getDestinationZipcode() {
 		return destinationZipcode;
 	}
 
-	public void setDestinationZipcode(String destinationZipcode) {
-		this.destinationZipcode = destinationZipcode;
-	}
+	// public void setDestinationZipcode(String destinationZipcode) {
+	// 	this.destinationZipcode = destinationZipcode;
+	// }
 
 	public String getDestinationAddress() {
 		return destinationAddress;
 	}
 
-	public void setDestinationAddress(String destinationAddress) {
-		this.destinationAddress = destinationAddress;
-	}
+	// public void setDestinationAddress(String destinationAddress) {
+	// 	this.destinationAddress = destinationAddress;
+	// }
 
 	public String getDestinationTel() {
 		return destinationTel;
 	}
 
-	public void setDestinationTel(String destinationTel) {
-		this.destinationTel = destinationTel;
-	}
+	// public void setDestinationTel(String destinationTel) {
+	// 	this.destinationTel = destinationTel;
+	// }
 
 	public Timestamp getDeliveryTime() {
 		return deliveryTime;
 	}
 
-	public void setDeliveryTime(Timestamp deliveryTime) {
-		this.deliveryTime = deliveryTime;
-	}
+	// public void setDeliveryTime(Timestamp deliveryTime) {
+	// 	this.deliveryTime = deliveryTime;
+	// }
 
 	public Integer getPaymentMethod() {
 		return paymentMethod;
 	}
 
-	public void setPaymentMethod(Integer paymentMethod) {
-		this.paymentMethod = paymentMethod;
-	}
+	// public void setPaymentMethod(Integer paymentMethod) {
+	// 	this.paymentMethod = paymentMethod;
+	// }
 
 	public User getUser() {
 		return user;

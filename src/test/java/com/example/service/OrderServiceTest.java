@@ -208,42 +208,33 @@ class OrderServiceTest {
      * 支払い方法が {@code 1}（クレジットカード等）の場合、ステータス {@code 1} が返されることを確認する。
      */
     @Test
-    @DisplayName("支払い方法が1のとき、statusが1を返す")
-    void returnStatus1_whenPaymentMethodIs1() {
-      Order order = createSampleOrder(1);
-      order.setPaymentMethod(1);
+    @DisplayName("支払い方法が1のとき、statusがCASH_ON_DELIVERYを返す")
+    void returnCashOnDelivery_whenPaymentMethodIs1() {
+      OrderStatus result = orderService.paymentMethodJudge(1);
 
-      OrderStatus result = orderService.paymentMethodJudge(order);
-
-      assertEquals(OrderStatus.PAID, result);
+      assertEquals(OrderStatus.CASH_ON_DELIVERY, result);
     }
 
     /**
      * 支払い方法が {@code 2}（代金引換等）の場合、ステータス {@code 2} が返されることを確認する。
      */
     @Test
-    @DisplayName("支払い方法が2のとき、statusが2を返す")
-    void returnStatus2_whenPaymentMethodIs2() {
-      Order order = createSampleOrder(1);
-      order.setPaymentMethod(2);
+    @DisplayName("支払い方法が2のとき、statusがPAIDを返す")
+    void returnPaid_whenPaymentMethodIs2() {
+      OrderStatus result = orderService.paymentMethodJudge(2);
 
-      OrderStatus result = orderService.paymentMethodJudge(order);
-
-      assertEquals(OrderStatus.CASH_ON_DELIVERY, result);
+      assertEquals(OrderStatus.PAID, result);
     }
 
     /**
      * 支払い方法が {@code 1} 以外の未定義値の場合、デフォルトとしてステータス {@code 2} が返されることを確認する。
      */
     @Test
-    @DisplayName("支払い方法が1以外の場合、statusが2を返す")
-    void returnStatus2_whenPaymentMethodIsOther() {
-      Order order = createSampleOrder(1);
-      order.setPaymentMethod(99);
+    @DisplayName("支払い方法が1以外の場合、statusがPAIDを返す")
+    void returnPaid_whenPaymentMethodIsOther() {
+      OrderStatus result = orderService.paymentMethodJudge(99);
 
-      OrderStatus result = orderService.paymentMethodJudge(order);
-
-      assertEquals(OrderStatus.CASH_ON_DELIVERY, result);
+      assertEquals(OrderStatus.PAID, result);
     }
   }
 
@@ -259,10 +250,9 @@ class OrderServiceTest {
   class OrderMethod {
 
     @Test
-    @DisplayName("正常系: statusとuserIdがセットされorderRepositoryのinsertが呼ばれる")
-    void setStatusAndUserIdAndCallInsert() {
+    @DisplayName("正常系: orderRepositoryのinsertが呼ばれる")
+    void callInsert() {
       Order order = createSampleOrder(null);
-      order.setPaymentMethod(1);
 
       Integer userId = 10;
       List<CartItem> cartItemList = new ArrayList<>();
@@ -276,8 +266,6 @@ class OrderServiceTest {
 
       orderService.order(order, userId);
 
-      assertEquals(OrderStatus.PAID, order.getStatus());
-      assertEquals(10, order.getUserId());
       verify(orderRepository, times(1)).insert(order);
     }
 
@@ -285,7 +273,6 @@ class OrderServiceTest {
     @DisplayName("正常系: トッピングなしのCartItemでorderItemRepositoryが呼ばれる")
     void callOrderItemRepository_whenCartItemHasNoTopping() {
       Order order = createSampleOrder(null);
-      order.setPaymentMethod(2);
 
       Integer userId = 5;
       CartItem cartItem = new CartItem();
@@ -312,7 +299,6 @@ class OrderServiceTest {
     @DisplayName("正常系: トッピングありのCartItemでorderToppingRepositoryが呼ばれる")
     void callOrderToppingRepository_whenCartItemHasTopping() {
       Order order = createSampleOrder(null);
-      order.setPaymentMethod(1);
 
       Integer userId = 5;
       Topping topping1 = new Topping();
@@ -342,7 +328,6 @@ class OrderServiceTest {
     @DisplayName("正常系: CartItemが複数の場合、件数分orderItemRepositoryが呼ばれる")
     void callOrderItemRepository_forEachCartItem() {
       Order order = createSampleOrder(null);
-      order.setPaymentMethod(1);
 
       Integer userId = 5;
       CartItem cartItem1 = new CartItem();
@@ -369,7 +354,6 @@ class OrderServiceTest {
     @DisplayName("異常系: 在庫不足時にStockShortageExceptionがスローされる")
     void throwStockShortageException_whenStockIsInsufficient() {
       Order order = createSampleOrder(null);
-      order.setPaymentMethod(1);
 
       Integer userId = 5;
       Topping topping = new Topping();
@@ -566,8 +550,20 @@ class OrderServiceTest {
     @DisplayName("正常系: 支払い方法が2(クレジットカード)の場合のテキスト置換")
     void sendMail_PaymentMethod2() throws Exception {
       mockResourceLoader();
-      Order order = createSampleOrder(1);
-      order.setPaymentMethod(2);
+      Order order = Order.builder()
+          .userId(10)
+          .status(OrderStatus.PAID)
+          .totalPrice(1500)
+          .orderDate(new java.sql.Date(System.currentTimeMillis()))
+          .deliveryTime(new Timestamp(System.currentTimeMillis()))
+          .destinationName("テスト太郎")
+          .destinationEmail("test@example.com")
+          .destinationZipcode("123-4567")
+          .destinationAddress("東京都渋谷区1-2-3")
+          .destinationTel("090-0000-0000")
+          .paymentMethod(2)
+          .build();
+      order.setId(1);
       lenient().when(orderRepository.orderLoad(1)).thenReturn(List.of(order));
 
       ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
@@ -627,7 +623,6 @@ class OrderServiceTest {
     @DisplayName("order: OrderItemのフィールドが正しくコピーされているか")
     void order_verifyOrderItemFieldsMapping() {
       Order order = createSampleOrder(null);
-      order.setPaymentMethod(1);
 
       CartItem cartItem = new CartItem();
       cartItem.setItemId(10);
@@ -657,7 +652,6 @@ class OrderServiceTest {
     @DisplayName("order: OrderToppingのフィールドが正しくセットされているか")
     void order_verifyOrderToppingFields() {
       Order order = createSampleOrder(null);
-      order.setPaymentMethod(1);
 
       Topping topping = new Topping();
       topping.setId(50);
@@ -685,7 +679,6 @@ class OrderServiceTest {
     @DisplayName("order: 複数の商品とトッピングが混在する場合の整合性")
     void order_complexMixedItems() {
       Order order = createSampleOrder(null);
-      order.setPaymentMethod(1);
 
       Topping topping1 = new Topping();
       topping1.setId(1);
@@ -742,40 +735,6 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("order: 支払い方法1の場合のステータス値1の検証")
-    void order_verifyStatus1ForPaymentMethod1() {
-      Order order = createSampleOrder(null);
-      order.setPaymentMethod(1);
-      when(orderRepository.insert(order)).thenReturn(1);
-
-      Cart cart = new Cart();
-      cart.setId(1);
-      when(cartService.getOrCreateCart(1)).thenReturn(cart);
-      when(cartService.findItemsByCartId(1)).thenReturn(new ArrayList<>());
-
-      orderService.order(order, 1);
-
-      assertEquals(OrderStatus.PAID, order.getStatus());
-    }
-
-    @Test
-    @DisplayName("order: 支払い方法2の場合のステータス値2の検証")
-    void order_verifyStatus2ForPaymentMethod2() {
-      Order order = createSampleOrder(null);
-      order.setPaymentMethod(2);
-      when(orderRepository.insert(order)).thenReturn(1);
-
-      Cart cart = new Cart();
-      cart.setId(1);
-      when(cartService.getOrCreateCart(1)).thenReturn(cart);
-      when(cartService.findItemsByCartId(1)).thenReturn(new ArrayList<>());
-
-      orderService.order(order, 1);
-
-      assertEquals(OrderStatus.CASH_ON_DELIVERY, order.getStatus());
-    }
-
-    @Test
     @DisplayName("sendMail: 送信先が複数回呼ばれても正しく動作する")
     void sendMail_multipleCalls() throws Exception {
       mockResourceLoader();
@@ -789,19 +748,13 @@ class OrderServiceTest {
     @Test
     @DisplayName("paymentMethodJudge: 境界値 - 0を指定した場合")
     void paymentMethodJudge_zero() {
-      Order order = new Order();
-      order.setPaymentMethod(0);
-
-      assertEquals(OrderStatus.CASH_ON_DELIVERY, orderService.paymentMethodJudge(order));
+      assertEquals(OrderStatus.PAID, orderService.paymentMethodJudge(0));
     }
 
     @Test
     @DisplayName("paymentMethodJudge: 境界値 - 負の値を指定した場合")
     void paymentMethodJudge_negative() {
-      Order order = new Order();
-      order.setPaymentMethod(-1);
-
-      assertEquals(OrderStatus.CASH_ON_DELIVERY, orderService.paymentMethodJudge(order));
+      assertEquals(OrderStatus.PAID, orderService.paymentMethodJudge(-1));
     }
   }
 
@@ -828,6 +781,9 @@ class OrderServiceTest {
     Order order = Order.builder()
         .userId(10)
         .status(OrderStatus.IN_CART)
+        .totalPrice(1500)
+        .orderDate(new java.sql.Date(System.currentTimeMillis()))
+        .deliveryTime(new Timestamp(System.currentTimeMillis()))
         .destinationName("テスト太郎")
         .destinationEmail("test@example.com")
         .destinationZipcode("123-4567")
@@ -836,11 +792,8 @@ class OrderServiceTest {
         .paymentMethod(1)
         .build();
     if (id != null) {
-      order.setId(id);
+      order.setId(id); // idはBuilder外（DB採番想定）のため、残したsetIdで設定
     }
-    order.setTotalPrice(1500);
-    order.setOrderDate(new java.sql.Date(System.currentTimeMillis()));
-    order.setDeliveryTime(new Timestamp(System.currentTimeMillis()));
     return order;
   }
 }

@@ -10,7 +10,7 @@ import org.springframework.cache.annotation.EnableCaching;
 @SpringBootApplication(exclude = { SecurityAutoConfiguration.class })
 @EnableCaching
 public class CurryApplication extends SpringBootServletInitializer {
-
+	
 	public static void main(String[] args) {
 		SpringApplication.run(CurryApplication.class, args);
 	}

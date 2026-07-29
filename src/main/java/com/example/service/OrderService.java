@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -23,11 +24,13 @@ import com.example.domain.CartItem;
 import com.example.domain.Order;
 import com.example.domain.OrderItem;
 import com.example.domain.OrderTopping;
+import com.example.domain.PaymentMethod;
 import com.example.domain.Topping;
 import com.example.repository.OrderItemRepository;
 import com.example.repository.OrderRepository;
 import com.example.repository.OrderToppingRepository;
 import com.example.repository.ToppingRepository;
+import com.example.service.payment.PaymentProcessor;
 import com.example.domain.OrderStatus;
 
 /**
@@ -43,24 +46,47 @@ public class OrderService {
 	/** ログ出力用Logger */
 	private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
-	@Autowired
-	private OrderRepository orderRepository;
+	// @Autowired
+	// private OrderRepository orderRepository;
 
-	@Autowired
-	private OrderItemRepository orderItemRepository;
+	// @Autowired
+	// private OrderItemRepository orderItemRepository;
 
-	@Autowired
-	private OrderToppingRepository orderToppingRepository;
+	// @Autowired
+	// private OrderToppingRepository orderToppingRepository;
 
-	@Autowired
-	private ToppingRepository toppingRepository;
+	// @Autowired
+	// private ToppingRepository toppingRepository;
 
-	@Autowired
-	private MailSender sender;
-	@Autowired
-	private CartService cartService;
-	@Autowired
-	private ResourceLoader resourceLoader;
+	// @Autowired
+	// private MailSender sender;
+
+	// @Autowired
+	// private CartService cartService;
+
+	// @Autowired
+	// private ResourceLoader resourceLoader;
+
+	private final OrderRepository orderRepository;
+	private final OrderItemRepository orderItemRepository;
+	private final OrderToppingRepository orderToppingRepository;
+	private final ToppingRepository toppingRepository;
+	private final MailSender sender;
+	private final CartService cartService;
+	private final ResourceLoader resourceLoader;
+	private final Map<PaymentMethod, PaymentProcessor> paymentProcessorMap;
+
+	public OrderService (OrderRepository orderRepository, OrderItemRepository orderItemRepository, OrderToppingRepository orderToppingRepository, ToppingRepository toppingRepository, MailSender sender, CartService cartService, ResourceLoader resourceLoader, List<PaymentProcessor> paymentProcessors) {
+		this.orderRepository = orderRepository;
+		this.orderItemRepository = orderItemRepository;
+		this.orderToppingRepository = orderToppingRepository;
+		this.toppingRepository = toppingRepository;
+		this.sender = sender;
+		this.cartService = cartService;
+		this.resourceLoader = resourceLoader;
+		this.paymentProcessorMap = paymentProcessors.stream()
+        .collect(Collectors.toMap(PaymentProcessor::getSupportedMethod, p -> p));
+	}
 
 	@Value("${spring.mail.from:noreply@example.com}")
 	private String mailFrom;
@@ -94,8 +120,8 @@ public class OrderService {
 	 * @param order
 	 */
 	public Integer order(Order order, Integer userId) {
-		order.setStatus(paymentMethodJudge(order));
-		order.setUserId(userId);
+		// order.setStatus(paymentMethodJudge(order));
+		// order.setUserId(userId);
 		Integer orderId = orderRepository.insert(order);
 		Cart cart = cartService.getOrCreateCart(userId);
 		if (cart != null) {
@@ -118,15 +144,22 @@ public class OrderService {
 	 * @return statusを整数で返す
 	 */
 
-	// リファクタリング課題#19 '=='の比較によるオートボクシング防止
-	public OrderStatus paymentMethodJudge(Order order) {
-		// if (order.getPaymentMethod() == 1) {
-		if (Integer.valueOf(1).equals(order.getPaymentMethod())) {
-        return OrderStatus.PAID;
-    } else {
-        return OrderStatus.CASH_ON_DELIVERY;
-    }
+	// public OrderStatus paymentMethodJudge(Integer paymentMethod) {
+	// 	// if (order.getPaymentMethod() == 1) {
+	// 	if (Integer.valueOf(1).equals(paymentMethod)) {
+	// 		return OrderStatus.PAID;
+	// 	} else {
+	// 		return OrderStatus.CASH_ON_DELIVERY;
+	// 	}
+	// }
+
+	public OrderStatus paymentMethodJudge(Integer paymentMethod) {
+		PaymentMethod method = PaymentMethod.fromValue(paymentMethod);
+		PaymentProcessor processor = paymentProcessorMap.get(method);
+		OrderStatus status = processor.judge();
+		return status;
 	}
+
 	/**
 	 * order_itemsテーブルにINSERTするメゾット
 	 * 

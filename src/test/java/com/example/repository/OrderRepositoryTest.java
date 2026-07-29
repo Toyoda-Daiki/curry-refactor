@@ -82,6 +82,7 @@ class OrderRepositoryTest {
 		sampleOrder = Order.builder()
 				.userId(sampleUserId)
 				.status(OrderStatus.IN_CART)
+				.totalPrice(3000)
 				.destinationName("テスト 太郎")
 				.destinationEmail(uniqueEmail)
 				.destinationZipcode("123-4567")
@@ -89,7 +90,6 @@ class OrderRepositoryTest {
 				.destinationTel("090-1234-5678")
 				.paymentMethod(1)
 				.build();
-		sampleOrder.setTotalPrice(3000);
 
 		orderRepository.insert(sampleOrder);
 
@@ -213,17 +213,18 @@ class OrderRepositoryTest {
 						+ "FROM orders WHERE id = :id",
 				new MapSqlParameterSource("id", sampleOrder.getId()),
 				(rs, rowNum) -> {
-					Order order = new Order();
-					order.setId(rs.getInt("id"));
-					order.setUserId(rs.getInt("user_id"));
-					order.setStatus(OrderStatus.values()[rs.getInt("status")]);
-					order.setTotalPrice(rs.getInt("total_price"));
-					order.setDestinationName(rs.getString("destination_name"));
-					order.setDestinationEmail(rs.getString("destination_email"));
-					order.setDestinationZipcode(rs.getString("destination_zipcode"));
-					order.setDestinationAddress(rs.getString("destination_address"));
-					order.setDestinationTel(rs.getString("destination_tel"));
-					order.setPaymentMethod(rs.getInt("payment_method"));
+					Order order = Order.builder()
+							.userId(rs.getInt("user_id"))
+							.status(OrderStatus.values()[rs.getInt("status")])
+							.totalPrice(rs.getInt("total_price"))
+							.destinationName(rs.getString("destination_name"))
+							.destinationEmail(rs.getString("destination_email"))
+							.destinationZipcode(rs.getString("destination_zipcode"))
+							.destinationAddress(rs.getString("destination_address"))
+							.destinationTel(rs.getString("destination_tel"))
+							.paymentMethod(rs.getInt("payment_method"))
+							.build();
+					order.setId(rs.getInt("id")); // idはBuilder外（DB採番結果）のため、残したsetIdで設定
 					return order;
 				});
 
@@ -395,6 +396,7 @@ class OrderRepositoryTest {
 		Order otherOrder = Order.builder()
 				.userId(otherUserId)
 				.status(OrderStatus.PAID)
+				.totalPrice(9999)
 				.destinationName("別ユーザー")
 				.destinationEmail("other@example.com")
 				.destinationZipcode("987-6543")
@@ -402,7 +404,6 @@ class OrderRepositoryTest {
 				.destinationTel("080-9999-8888")
 				.paymentMethod(2)
 				.build();
-		otherOrder.setTotalPrice(9999);
 
 		orderRepository.insert(otherOrder);
 

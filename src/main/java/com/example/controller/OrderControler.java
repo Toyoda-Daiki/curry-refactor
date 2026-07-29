@@ -155,6 +155,8 @@ public class OrderControler {
 				.deliveryTime(deliveryTimestamp)
 				.paymentMethod(form.getPaymentMethod())
 				.totalPrice((Integer) session.getAttribute("totalPrice"))
+				.status(service.paymentMethodJudge(form.getPaymentMethod()))
+				.userId(user.getId())
 				.build();
 
 		Integer orderId = null;
