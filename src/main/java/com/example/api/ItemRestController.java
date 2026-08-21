@@ -1,6 +1,7 @@
 package com.example.api;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,13 +85,19 @@ public class ItemRestController {
         log.info("商品詳細取得API: id={}", id);
 
         // 商品詳細を取得（論理削除済みはnullが返る想定）
-        Item item = itemService.showItemDetail(id);
+        // Item item = itemService.showItemDetail(id);
 
-        if (item == null) {
+        // 商品詳細を取得（存在しない場合はOptional.empty()）
+        // リファクタリング課題#2（対応漏れ修正）Optional<Item>で受け取る
+        Optional<Item> itemOpt = itemService.showItemDetail(id);
+
+        // if (item == null) {
+        Item item = itemOpt.orElseThrow(() -> {
             log.warn("商品詳細取得API: 商品が存在しない id={}", id);
             // 404はExceptionHandlerで処理するため例外をスロー
-            throw new ItemNotFoundException("指定した商品が存在しません");
-        }
+            // throw new ItemNotFoundException("指定した商品が存在しません");
+            return new ItemNotFoundException("指定した商品が存在しません");
+        });
 
         // 全商品共通のトッピングマスタを取得（ItemServiceのfindAllTopping()で一元管理）
         List<Topping> toppingList = itemService.findAllTopping();

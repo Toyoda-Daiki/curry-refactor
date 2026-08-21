@@ -1,6 +1,7 @@
 package com.example.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +95,9 @@ public class ItemRepository {
 	 * @return Item情報１件
 	 */
 	// リファクタリング課題#39 queryForObjectをqueryに変更し0件時の例外を防止
-	public Item showItemDetail(Integer id) {
+	// リファクタリング課題#2（対応漏れ修正）「1件または存在しない」検索メソッドはOptional<T>を返す
+	// public Item showItemDetail(Integer id) {
+	public Optional<Item> showItemDetail(Integer id) {
 		log.debug("商品詳細取得: itemId={}", id);
 		String showItemDetailSql = "SELECT * FROM items WHERE id = :id;";
 		SqlParameterSource param = new MapSqlParameterSource().addValue("id", id);
@@ -103,7 +106,8 @@ public class ItemRepository {
 		// return item;
 
 		List<Item> result = template.query(showItemDetailSql, param, ITEM_ROW_MAPPER);
-		return result.isEmpty() ? null : result.get(0);
+		// return result.isEmpty() ? null : result.get(0);
+		return result.stream().findFirst();
 	}
 
 	public void insert(Item item) {

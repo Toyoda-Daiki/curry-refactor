@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -153,12 +154,17 @@ public class ItemServiceTest {
     @Test
     @DisplayName("商品詳細取得のテスト")
     void testShowItemDetail() {
-        when(itemRepository.showItemDetail(1)).thenReturn(item1);
+        // リファクタリング課題#2（対応漏れ修正）showItemDetail()はOptional<Item>を返すようになったため修正
+        // when(itemRepository.showItemDetail(1)).thenReturn(item1);
+        // Item result = itemService.showItemDetail(1);
+        // assertNotNull(result);
+        // assertEquals("カツカレー", result.getName());
+        when(itemRepository.showItemDetail(1)).thenReturn(Optional.of(item1));
 
-        Item result = itemService.showItemDetail(1);
+        Optional<Item> result = itemService.showItemDetail(1);
 
-        assertNotNull(result);
-        assertEquals("カツカレー", result.getName());
+        assertTrue(result.isPresent());
+        assertEquals("カツカレー", result.get().getName());
         verify(itemRepository, times(1)).showItemDetail(1);
     }
 
@@ -262,9 +268,13 @@ public class ItemServiceTest {
     @Test
     @DisplayName("商品詳細取得のテスト（存在しないID）")
     void testShowItemDetail_NotFound() {
-        when(itemRepository.showItemDetail(999)).thenReturn(null);
-        Item result = itemService.showItemDetail(999);
-        assertNull(result);
+        // リファクタリング課題#2（対応漏れ修正）showItemDetail()はOptional<Item>を返すようになったため修正
+        // when(itemRepository.showItemDetail(999)).thenReturn(null);
+        // Item result = itemService.showItemDetail(999);
+        // assertNull(result);
+        when(itemRepository.showItemDetail(999)).thenReturn(Optional.empty());
+        Optional<Item> result = itemService.showItemDetail(999);
+        assertTrue(result.isEmpty());
     }
 
     @Test

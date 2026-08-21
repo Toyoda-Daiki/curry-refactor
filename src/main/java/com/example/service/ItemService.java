@@ -2,6 +2,7 @@ package com.example.service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,9 +49,11 @@ public class ItemService {
 	 * 商品IDをItemRepository内のshowItemDetailに渡す
 	 * 
 	 * @param id
-	 * @return 商品情報を１件
+	 * @return 商品情報を１件（存在しない場合はOptional.empty()）
 	 */
-	public Item showItemDetail(Integer id) {
+	// リファクタリング課題#2（対応漏れ修正）Optional<Item>をそのまま呼び出し元に伝播する
+	// public Item showItemDetail(Integer id) {
+	public Optional<Item> showItemDetail(Integer id) {
 		return repository.showItemDetail(id);
 	}
 

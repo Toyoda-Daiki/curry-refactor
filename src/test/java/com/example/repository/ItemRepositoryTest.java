@@ -3,17 +3,15 @@ package com.example.repository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -99,7 +97,10 @@ public class ItemRepositoryTest {
     @Test
     void testFindByNameNotFound() {
         List<Item> itemList = itemRepository.findByName("存在しない商品名XXXXX");
-        assertNull(itemList, "見つからない場合はnullが返る必要があります");
+        // リファクタリング課題#2（対応漏れ修正）findByName()は0件時にnullではなく空リストを返すようになったため修正
+        // assertNull(itemList, "見つからない場合はnullが返る必要があります");
+        assertNotNull(itemList, "見つからない場合でもnullではなく空リストが返る必要があります");
+        assertTrue(itemList.isEmpty(), "見つからない場合は空リストが返る必要があります");
     }
 
     /**
@@ -121,8 +122,12 @@ public class ItemRepositoryTest {
         assertNotNull(itemList);
         Integer id = itemList.get(0).getId();
 
-        Item foundItem = itemRepository.showItemDetail(id);
-        assertNotNull(foundItem, "IDによる詳細検索で商品が見つかる必要があります");
+        // リファクタリング課題#2（対応漏れ修正）showItemDetail()はOptional<Item>を返すようになったため修正
+        // Item foundItem = itemRepository.showItemDetail(id);
+        // assertNotNull(foundItem, "IDによる詳細検索で商品が見つかる必要があります");
+        Optional<Item> foundItemOpt = itemRepository.showItemDetail(id);
+        assertTrue(foundItemOpt.isPresent(), "IDによる詳細検索で商品が見つかる必要があります");
+        Item foundItem = foundItemOpt.get();
         assertEquals("詳細テストカレー", foundItem.getName());
         assertEquals("詳細表示テスト用", foundItem.getDescription());
         assertEquals(1200, foundItem.getPriceM());
@@ -198,8 +203,11 @@ public class ItemRepositoryTest {
      * 削除済み商品は名前検索にヒットしないことを確認します。
      * ※ showItemDetail の挙動確認ではなく、findByName の削除済み除外確認です。
      */
+    // リファクタリング課題#2（対応漏れ修正）findByName()は0件時にnullではなく空リストを返すようになったためメソッド名・内容を修正
+    // @Test
+    // void testFindByName_DeletedItemReturnsNull() {
     @Test
-    void testFindByName_DeletedItemReturnsNull() {
+    void testFindByName_DeletedItemReturnsEmptyList() {
         Item item = new Item();
         item.setName("詳細用削除済み");
         item.setDescription("削除済み");
@@ -210,7 +218,9 @@ public class ItemRepositoryTest {
         itemRepository.insert(item);
 
         List<Item> itemList = itemRepository.findByName("詳細用削除済み");
-        assertNull(itemList, "削除済みは名前検索にヒットしないはず");
+        // assertNull(itemList, "削除済みは名前検索にヒットしないはず");
+        assertNotNull(itemList, "削除済みは名前検索にヒットしないはず（nullではなく空リスト）");
+        assertTrue(itemList.isEmpty(), "削除済みは名前検索にヒットしないはず（空リスト）");
     }
 
     /**
@@ -395,11 +405,16 @@ public class ItemRepositoryTest {
 
     /**
      * showItemDetailメソッドの異常系テスト.
-     * 存在しないIDを指定した場合に例外が発生することを確認します。
+     * 存在しないIDを指定した場合にOptional.empty()が返ることを確認します。
+     * リファクタリング課題#39/#2（対応漏れ修正）：
+     * queryForObject()（EmptyResultDataAccessExceptionを投げる実装）から
+     * query()+Optionalに変更されたため、期待する結果を合わせて修正。
      */
     @Test
     void testShowItemDetail_NotFound() {
-        assertThrows(EmptyResultDataAccessException.class,
-                () -> itemRepository.showItemDetail(999999));
+        // assertThrows(EmptyResultDataAccessException.class,
+        //         () -> itemRepository.showItemDetail(999999));
+        Optional<Item> result = itemRepository.showItemDetail(999999);
+        assertTrue(result.isEmpty(), "存在しないIDの場合はOptional.empty()が返る必要があります");
     }
 }

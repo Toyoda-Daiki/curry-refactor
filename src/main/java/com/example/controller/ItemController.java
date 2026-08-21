@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import com.example.domain.Item;
 import com.example.domain.Topping;
 import com.example.domain.UserDetailData;
+import com.example.exception.ItemNotFoundException;
 import com.example.service.ItemService;
 
 import jakarta.servlet.ServletContext;
@@ -112,9 +113,19 @@ public class ItemController {
 
 		int itemId = Integer.parseInt(id);
 		log.info("商品詳細表示: itemId={}", itemId);
-		
+
 		// 商品詳細を表示させる
-		Item item = itemService.showItemDetail(Integer.parseInt(id));
+		// Item item = itemService.showItemDetail(Integer.parseInt(id));
+
+		// 商品詳細を表示させる（存在しない場合はOptional.empty()）
+		// リファクタリング課題#2/#39（対応漏れ修正）
+		// 従来はnullのままmodelに詰めてテンプレート側で例外になっていたため、
+		// 存在しない場合は明示的に404（ItemNotFoundException）とする
+		Item item = itemService.showItemDetail(itemId)
+				.orElseThrow(() -> {
+					log.warn("商品詳細表示: 商品が存在しない itemId={}", itemId);
+					return new ItemNotFoundException("指定した商品が存在しません: itemId=" + itemId);
+				});
 		model.addAttribute("item", item);
 
 		// トッピング一覧を表示
