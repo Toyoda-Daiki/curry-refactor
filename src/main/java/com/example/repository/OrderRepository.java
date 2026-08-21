@@ -252,8 +252,13 @@ public class OrderRepository {
 		List<Order> orderList = template.query(sql, param, ORDER_RESULTSET);
 
 		if (orderList.size() == 0) {
+		// log.debug("注文履歴取得結果なし: userId={}", userId);
+		// return null;
+		// }
+
+		// リファクタリング課題#2（対応漏れ修正）
+		// 0件のとき null ではなく空リストを返す。呼び出し元でのnullチェック連鎖を撲滅するため
 			log.debug("注文履歴取得結果なし: userId={}", userId);
-			return null;
 		}
 		return orderList;
 	}
@@ -266,8 +271,12 @@ public class OrderRepository {
 	 */
 	public Integer insert(Order order) {
 		// SqlParameterSource param = new BeanPropertySqlParameterSource(order);
-		// String insertSql = "INSERT INTO orders (user_id, status, total_price, order_date, destination_name, destination_email, destination_zipcode, destination_address, destination_tel, delivery_time, payment_method) "
-		// 		+ "VALUES (:userId, :status, :totalPrice, :orderDate, :destinationName, :destinationEmail, :destinationZipcode, :destinationAddress, :destinationTel, :deliveryTime, :paymentMethod);";
+		// String insertSql = "INSERT INTO orders (user_id, status, total_price,
+		// order_date, destination_name, destination_email, destination_zipcode,
+		// destination_address, destination_tel, delivery_time, payment_method) "
+		// + "VALUES (:userId, :status, :totalPrice, :orderDate, :destinationName,
+		// :destinationEmail, :destinationZipcode, :destinationAddress, :destinationTel,
+		// :deliveryTime, :paymentMethod);";
 
 		// // 自動採番の際にidを取得する
 		// KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -280,28 +289,28 @@ public class OrderRepository {
 		// return order.getId();
 
 		// BeanPropertySqlParameterSourceではenumを扱えないため手動でパラメータを設定
-    SqlParameterSource param = new MapSqlParameterSource()
-        .addValue("userId", order.getUserId())
-        .addValue("status", order.getStatus().getValue()) // enumをintに変換
-        .addValue("totalPrice", order.getTotalPrice())
-        .addValue("orderDate", order.getOrderDate())
-        .addValue("destinationName", order.getDestinationName())
-        .addValue("destinationEmail", order.getDestinationEmail())
-        .addValue("destinationZipcode", order.getDestinationZipcode())
-        .addValue("destinationAddress", order.getDestinationAddress())
-        .addValue("destinationTel", order.getDestinationTel())
-        .addValue("deliveryTime", order.getDeliveryTime())
-        .addValue("paymentMethod", order.getPaymentMethod());
-    
-    String insertSql = "INSERT INTO orders (user_id, status, total_price, order_date, destination_name, destination_email, destination_zipcode, destination_address, destination_tel, delivery_time, payment_method) "
-            + "VALUES (:userId, :status, :totalPrice, :orderDate, :destinationName, :destinationEmail, :destinationZipcode, :destinationAddress, :destinationTel, :deliveryTime, :paymentMethod);";
-    
-    KeyHolder keyHolder = new GeneratedKeyHolder();
-    String[] keyColumnNames = { "id" };
-    template.update(insertSql, param, keyHolder, keyColumnNames);
-    order.setId(keyHolder.getKey().intValue());
-    log.info("注文登録完了: orderId={}, userId={}", order.getId(), order.getUserId());
-    return order.getId();
+		SqlParameterSource param = new MapSqlParameterSource()
+				.addValue("userId", order.getUserId())
+				.addValue("status", order.getStatus().getValue()) // enumをintに変換
+				.addValue("totalPrice", order.getTotalPrice())
+				.addValue("orderDate", order.getOrderDate())
+				.addValue("destinationName", order.getDestinationName())
+				.addValue("destinationEmail", order.getDestinationEmail())
+				.addValue("destinationZipcode", order.getDestinationZipcode())
+				.addValue("destinationAddress", order.getDestinationAddress())
+				.addValue("destinationTel", order.getDestinationTel())
+				.addValue("deliveryTime", order.getDeliveryTime())
+				.addValue("paymentMethod", order.getPaymentMethod());
+
+		String insertSql = "INSERT INTO orders (user_id, status, total_price, order_date, destination_name, destination_email, destination_zipcode, destination_address, destination_tel, delivery_time, payment_method) "
+				+ "VALUES (:userId, :status, :totalPrice, :orderDate, :destinationName, :destinationEmail, :destinationZipcode, :destinationAddress, :destinationTel, :deliveryTime, :paymentMethod);";
+
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		String[] keyColumnNames = { "id" };
+		template.update(insertSql, param, keyHolder, keyColumnNames);
+		order.setId(keyHolder.getKey().intValue());
+		log.info("注文登録完了: orderId={}, userId={}", order.getId(), order.getUserId());
+		return order.getId();
 	}
 
 }

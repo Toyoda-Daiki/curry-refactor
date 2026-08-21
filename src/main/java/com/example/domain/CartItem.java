@@ -1,6 +1,9 @@
 package com.example.domain;
 
 import java.util.List;
+
+import com.example.form.ItemCartInForm;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -119,7 +122,19 @@ public class CartItem {
 		this.quantity = quantity;
 	}
 
-	
+	// リファクタリング課題#17 オブジェクト生成の責務（Factory Method）
+	public static CartItem from(ItemCartInForm form, Integer price) {
+		CartItem cartItem = new CartItem();
+		cartItem.name = form.getName();
+		cartItem.size = form.getSize();
+		cartItem.itemId = form.getId();
+		cartItem.itemPrice = price;
+		cartItem.quantity = form.getQuantity();
+		cartItem.imagePath = form.getImagePath();
+		return cartItem;
+		// idは意図的にセットしない（nullのまま） → setId(null)という後付けの帳尻合わせが不要になる
+	}
+
 	// リファクタリング課題#21 equals()とhashCode()をidのみで実装
 	@Override
 	public int hashCode() {
@@ -150,7 +165,8 @@ public class CartItem {
 	public String toString() {
 		int toppingCount = (toppingList != null) ? toppingList.size() : 0;
 		return "CartItem [id=" + id + ", cartId=" + cartId + ", itemId=" + itemId + ", name=" + name + ", size=" + size
-				+ ", imagePath=" + imagePath + ", toppingList=" + toppingList + ", subTotalPrice=" + (toppingCount > 0 ? this.getSubTotal() : "N/A")
+				+ ", imagePath=" + imagePath + ", toppingList=" + toppingList + ", subTotalPrice="
+				+ (toppingCount > 0 ? this.getSubTotal() : "N/A")
 				+ ", quantity=" + quantity + ", itemPrice=" + itemPrice + "]";
 	}
 

@@ -1,6 +1,7 @@
 package com.example.domain;
 
 import java.util.List;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -80,7 +81,17 @@ public class OrderItem {
 		this.orderTopping = orderTopping;
 	}
 
-	
+	// リファクタリング課題#17 オブジェクト生成の責務（Factory Method）
+	public static OrderItem from(CartItem cartItem, Integer orderId) {
+		OrderItem orderItem = new OrderItem();
+		orderItem.itemId = cartItem.getItemId();
+		orderItem.quantity = cartItem.getQuantity();
+		orderItem.size = cartItem.getSize();
+		orderItem.orderId = orderId;
+		return orderItem;
+		// idは意図的にセットしない（nullのまま） → setId(null)という後付けの帳尻合わせが不要になる
+	}
+
 	// リファクタリング課題#21 equals()とhashCode()をidのみで実装
 	@Override
 	public int hashCode() {

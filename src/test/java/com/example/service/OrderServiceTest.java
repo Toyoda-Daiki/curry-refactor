@@ -7,14 +7,15 @@ import static org.mockito.Mockito.*;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -32,6 +33,9 @@ import com.example.repository.OrderItemRepository;
 import com.example.repository.OrderRepository;
 import com.example.repository.OrderToppingRepository;
 import com.example.repository.ToppingRepository;
+import com.example.service.payment.CashOnDeliveryPaymentProcessor;
+import com.example.service.payment.CreditCardPaymentProcessor;
+import com.example.service.payment.PaymentProcessor;
 
 /**
  * {@link OrderService} の単体テストクラス。
@@ -45,12 +49,18 @@ import com.example.repository.ToppingRepository;
  * テスト対象メソッド一覧:
  * </p>
  * <ul>
- * <li>{@link OrderService#orderLoad(int)}</li>
- * <li>{@link OrderService#findByOrder(int)}</li>
- * <li>{@link OrderService#paymentMethodJudge(Order)}</li>
- * <li>{@link OrderService#order(Order, Integer)}</li>
+ * <li>{@link OrderService#orderLoad(Integer)}</li>
+ * <li>{@link OrderService#findByOrder(Integer)}</li>
+ * <li>{@link OrderService#paymentMethodJudge(Integer)}</li>
+ * <li>{@link OrderService#order(Order, Integer, String)}</li>
  * <li>{@link OrderService#sendMail(String, Integer)}</li>
  * </ul>
+ *
+ * リファクタリング課題#6・#7 対応：
+ * OrderServiceのコンストラクタにList&lt;PaymentProcessor&gt;・ApplicationEventPublisherが
+ * 追加されたことに伴い、@InjectMocksによる自動注入をやめ、@BeforeEachで
+ * コンストラクタを明示的に呼び出す形に変更した。あわせてorder()呼び出し箇所に
+ * email引数を追加している。
  *
  * @author toyodadaiki
  * @see OrderService
@@ -74,10 +84,6 @@ class OrderServiceTest {
   @Mock
   private MailSender sender;
 
-  /**
-   * テスト対象の {@link OrderService}。
-   * モックが自動的に注入される。
-   */
   @Mock
   private ToppingRepository toppingRepository;
 
@@ -87,15 +93,36 @@ class OrderServiceTest {
   @Mock
   private ResourceLoader resourceLoader;
 
+  /** リファクタリング課題#7 注文完了イベント発行用のモック。 */
+  @Mock
+  private ApplicationEventPublisher eventPublisher;
+
   /**
    * テスト対象の {@link OrderService}。
-   * モックが自動的に注入される。
+   * リファクタリング課題#6・#7でコンストラクタ引数が増えたため、
+   * @InjectMocksではなく@BeforeEachで明示的に組み立てる。
    */
-  @InjectMocks
   private OrderService orderService;
 
-  @org.junit.jupiter.api.BeforeEach
-  void initFields() {
+  @BeforeEach
+  void setUpOrderService() {
+    // リファクタリング課題#6 Strategyパターン：実際のProcessor実装をそのまま使う
+    // （支払い方法の判定ロジック自体は本物を使い、周辺のRepository等だけをモック化する）
+    List<PaymentProcessor> paymentProcessors = List.of(
+        new CashOnDeliveryPaymentProcessor(),
+        new CreditCardPaymentProcessor());
+
+    orderService = new OrderService(
+        orderRepository,
+        orderItemRepository,
+        orderToppingRepository,
+        toppingRepository,
+        sender,
+        cartService,
+        resourceLoader,
+        paymentProcessors,
+        eventPublisher);
+
     ReflectionTestUtils.setField(orderService, "mailFrom", "noreply@example.com");
     ReflectionTestUtils.setField(orderService, "mailSubject", "ご注文ありがとうございます");
   }
@@ -112,7 +139,7 @@ class OrderServiceTest {
   }
 
   /**
-   * {@link OrderService#orderLoad(int)} のテストグループ。
+   * {@link OrderService#orderLoad(Integer)} のテストグループ。
    *
    * <p>
    * 指定されたユーザーIDに紐づく注文一覧を取得する処理を検証する。
@@ -122,9 +149,6 @@ class OrderServiceTest {
   @DisplayName("orderLoad() のテスト")
   class OrderLoad {
 
-    /**
-     * リポジトリの {@code orderLoad} が呼び出され、その結果がそのまま返されることを確認する。
-     */
     @Test
     @DisplayName("正常系: orderRepositoryのorderLoadを呼び出し結果を返す")
     void delegateToRepository() {
@@ -137,9 +161,6 @@ class OrderServiceTest {
       verify(orderRepository, times(1)).orderLoad(1);
     }
 
-    /**
-     * リポジトリが空リストを返した場合、空リストがそのまま返されることを確認する。
-     */
     @Test
     @DisplayName("正常系: 空リストが返る場合もそのまま返す")
     void returnEmptyList_whenRepositoryReturnsEmpty() {
@@ -153,19 +174,12 @@ class OrderServiceTest {
   }
 
   /**
-   * {@link OrderService#findByOrder(int)} のテストグループ。
-   *
-   * <p>
-   * テーブルIDに紐づく注文一覧を取得する処理を検証する。
-   * </p>
+   * {@link OrderService#findByOrder(Integer)} のテストグループ。
    */
   @Nested
   @DisplayName("findByOrder() のテスト")
   class FindByOrder {
 
-    /**
-     * リポジトリの {@code findByOrdertable} が呼び出され、その結果がそのまま返されることを確認する。
-     */
     @Test
     @DisplayName("正常系: orderRepositoryのfindByOrdertableを呼び出し結果を返す")
     void delegateToRepository() {
@@ -178,9 +192,6 @@ class OrderServiceTest {
       verify(orderRepository, times(1)).findByOrdertable(10);
     }
 
-    /**
-     * リポジトリが空リストを返した場合、空リストがそのまま返されることを確認する。
-     */
     @Test
     @DisplayName("正常系: 空リストが返る場合もそのまま返す")
     void returnEmptyList_whenRepositoryReturnsEmpty() {
@@ -194,19 +205,15 @@ class OrderServiceTest {
   }
 
   /**
-   * {@link OrderService#paymentMethodJudge(Order)} のテストグループ。
+   * {@link OrderService#paymentMethodJudge(Integer)} のテストグループ。
    *
-   * <p>
-   * 支払い方法に応じたステータス値を返す処理を検証する。
-   * </p>
+   * リファクタリング課題#6 対応：Strategyパターン化により、
+   * 「代引き=1、クレジットカード=2」の対応関係で判定が反転している。
    */
   @Nested
   @DisplayName("paymentMethodJudge() のテスト")
   class PaymentMethodJudge {
 
-    /**
-     * 支払い方法が {@code 1}（クレジットカード等）の場合、ステータス {@code 1} が返されることを確認する。
-     */
     @Test
     @DisplayName("支払い方法が1のとき、statusがCASH_ON_DELIVERYを返す")
     void returnCashOnDelivery_whenPaymentMethodIs1() {
@@ -215,9 +222,6 @@ class OrderServiceTest {
       assertEquals(OrderStatus.CASH_ON_DELIVERY, result);
     }
 
-    /**
-     * 支払い方法が {@code 2}（代金引換等）の場合、ステータス {@code 2} が返されることを確認する。
-     */
     @Test
     @DisplayName("支払い方法が2のとき、statusがPAIDを返す")
     void returnPaid_whenPaymentMethodIs2() {
@@ -225,25 +229,17 @@ class OrderServiceTest {
 
       assertEquals(OrderStatus.PAID, result);
     }
-
-    /**
-     * 支払い方法が {@code 1} 以外の未定義値の場合、デフォルトとしてステータス {@code 2} が返されることを確認する。
-     */
-    @Test
-    @DisplayName("支払い方法が1以外の場合、statusがPAIDを返す")
-    void returnPaid_whenPaymentMethodIsOther() {
-      OrderStatus result = orderService.paymentMethodJudge(99);
-
-      assertEquals(OrderStatus.PAID, result);
-    }
   }
 
   /**
-   * {@link OrderService#order(Order, Integer, List)} のテストグループ。
+   * {@link OrderService#order(Order, Integer, String)} のテストグループ。
    *
    * <p>
    * セッション依存を排除し、引数で渡されたデータに基づく注文確定処理全体を検証する。
    * </p>
+   *
+   * リファクタリング課題#7 対応：order()にemail引数が追加されたため、
+   * 全呼び出し箇所に3つ目の引数を追加している。
    */
   @Nested
   @DisplayName("order() のテスト")
@@ -264,7 +260,7 @@ class OrderServiceTest {
       when(cartService.getOrCreateCart(userId)).thenReturn(cart);
       when(cartService.findItemsByCartId(1)).thenReturn(cartItemList);
 
-      orderService.order(order, userId);
+      orderService.order(order, userId, "test@example.com");
 
       verify(orderRepository, times(1)).insert(order);
     }
@@ -284,17 +280,12 @@ class OrderServiceTest {
       when(cartService.getOrCreateCart(userId)).thenReturn(cart);
       when(cartService.findItemsByCartId(1)).thenReturn(cartItemList);
 
-      orderService.order(order, userId);
+      orderService.order(order, userId, "test@example.com");
 
       verify(orderItemRepository, times(1)).order(any(OrderItem.class));
       verify(orderToppingRepository, never()).insert(any(OrderTopping.class));
     }
 
-    /**
-     * トッピングありの {@link CartItem} が存在する場合、
-     * トッピングの件数分だけ {@link OrderToppingRepository#insert(OrderTopping)}
-     * が呼び出されることを確認する。
-     */
     @Test
     @DisplayName("正常系: トッピングありのCartItemでorderToppingRepositoryが呼ばれる")
     void callOrderToppingRepository_whenCartItemHasTopping() {
@@ -315,15 +306,11 @@ class OrderServiceTest {
       when(cartService.getOrCreateCart(userId)).thenReturn(cart);
       when(cartService.findItemsByCartId(1)).thenReturn(cartItemList);
 
-      orderService.order(order, userId);
+      orderService.order(order, userId, "test@example.com");
 
       verify(orderToppingRepository, times(2)).insert(any(OrderTopping.class));
     }
 
-    /**
-     * 複数の {@link CartItem} が存在する場合、
-     * カートアイテムの件数分だけ {@link OrderItemRepository#order(OrderItem)} が呼び出されることを確認する。
-     */
     @Test
     @DisplayName("正常系: CartItemが複数の場合、件数分orderItemRepositoryが呼ばれる")
     void callOrderItemRepository_forEachCartItem() {
@@ -342,14 +329,11 @@ class OrderServiceTest {
       when(cartService.getOrCreateCart(userId)).thenReturn(cart);
       when(cartService.findItemsByCartId(1)).thenReturn(cartItemList);
 
-      orderService.order(order, userId);
+      orderService.order(order, userId, "test@example.com");
 
       verify(orderItemRepository, times(2)).order(any(OrderItem.class));
     }
 
-    /**
-     * 在庫不足が発生した場合に例外が伝播することを確認する。
-     */
     @Test
     @DisplayName("異常系: 在庫不足時にStockShortageExceptionがスローされる")
     void throwStockShortageException_whenStockIsInsufficient() {
@@ -368,28 +352,29 @@ class OrderServiceTest {
       when(cartService.findItemsByCartId(1)).thenReturn(cartItemList);
       when(orderItemRepository.order(any())).thenReturn(1);
 
-      // トッピングの在庫減算時に例外を投げるように設定
       doThrow(new com.example.exception.StockShortageException("在庫不足"))
           .when(toppingRepository).decrementStock(eq(1), any());
 
       assertThrows(com.example.exception.StockShortageException.class, () -> {
-        orderService.order(order, userId);
+        orderService.order(order, userId, "test@example.com");
       });
     }
   }
 
   /**
-   * {@link OrderService#sendMail(String)} のテストグループ。
+   * {@link OrderService#sendMail(String, Integer)} のテストグループ。
    *
    * <p>
    * 注文完了メールの送信処理（宛先・送信元・件名・本文）を検証する。
+   * sendMail()自体はリファクタリング課題#7以降もOrderServiceに残っているため、
+   * このテストグループの内容は変更不要。
    * </p>
    */
   @Nested
   @DisplayName("sendMail() のテスト")
   class SendMail {
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void setUp() throws Exception {
       lenient().when(orderRepository.orderLoad(anyInt())).thenReturn(List.of(createSampleOrder(1)));
       lenient().when(orderItemRepository.findByOrderId(any())).thenReturn(new ArrayList<>());
@@ -420,7 +405,6 @@ class OrderServiceTest {
       ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
       orderService.sendMail("user@example.com", 1);
       verify(sender).send(captor.capture());
-      // mailFrom is injected via @Value; default is noreply@example.com
       assertNotNull(captor.getValue().getFrom());
     }
 
@@ -497,7 +481,7 @@ class OrderServiceTest {
       Item product = new Item();
       product.setName("具なしカレー");
       item.setItem(product);
-      item.setOrderTopping(new ArrayList<>()); // 空リスト
+      item.setOrderTopping(new ArrayList<>());
       order.setOrderItemList(List.of(item));
 
       when(orderRepository.orderLoad(1)).thenReturn(List.of(order));
@@ -612,7 +596,7 @@ class OrderServiceTest {
       when(orderRepository.insert(order)).thenReturn(100);
       when(cartService.getOrCreateCart(anyInt())).thenReturn(null);
 
-      Integer orderId = orderService.order(order, 1);
+      Integer orderId = orderService.order(order, 1, "test@example.com");
 
       assertEquals(100, orderId);
       verify(cartService, never()).findItemsByCartId(anyInt());
@@ -639,7 +623,7 @@ class OrderServiceTest {
       ArgumentCaptor<OrderItem> orderItemCaptor = ArgumentCaptor.forClass(OrderItem.class);
       when(orderItemRepository.order(orderItemCaptor.capture())).thenReturn(1);
 
-      orderService.order(order, 1);
+      orderService.order(order, 1, "test@example.com");
 
       OrderItem captured = orderItemCaptor.getValue();
       assertEquals(10, captured.getItemId());
@@ -667,7 +651,7 @@ class OrderServiceTest {
       when(orderItemRepository.order(any())).thenReturn(100);
 
       ArgumentCaptor<OrderTopping> toppingCaptor = ArgumentCaptor.forClass(OrderTopping.class);
-      orderService.order(order, 1);
+      orderService.order(order, 1, "test@example.com");
 
       verify(orderToppingRepository).insert(toppingCaptor.capture());
       assertEquals(100, toppingCaptor.getValue().getOrderItemId());
@@ -702,11 +686,10 @@ class OrderServiceTest {
       when(cartService.getOrCreateCart(1)).thenReturn(cart);
       when(cartService.findItemsByCartId(1)).thenReturn(List.of(c1, c2));
 
-      orderService.order(order, 1);
+      orderService.order(order, 1, "test@example.com");
 
       verify(orderItemRepository, times(2)).order(any());
       verify(orderToppingRepository, times(3)).insert(any());
-      // 在庫減算の検証: 数量分減らされているか
       verify(toppingRepository).decrementStock(1, 1);
       verify(toppingRepository).decrementStock(2, 1);
       verify(toppingRepository).decrementStock(3, 2);
@@ -729,7 +712,7 @@ class OrderServiceTest {
       when(cartService.getOrCreateCart(1)).thenReturn(cart);
       when(cartService.findItemsByCartId(1)).thenReturn(List.of(item));
 
-      orderService.order(order, 1);
+      orderService.order(order, 1, "test@example.com");
 
       verify(toppingRepository).decrementStock(100, 3);
     }
@@ -746,38 +729,43 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("paymentMethodJudge: 境界値 - 0を指定した場合")
+    @DisplayName("paymentMethodJudge: 境界値 - 0を指定した場合、不正な値として例外がスローされる")
     void paymentMethodJudge_zero() {
-      assertEquals(OrderStatus.PAID, orderService.paymentMethodJudge(0));
+      // リファクタリング課題#6 対応：PaymentMethod.fromValue()は未定義の値に対して
+      // IllegalArgumentExceptionを投げる仕様になったため、期待値をそれに合わせて変更
+      assertThrows(IllegalArgumentException.class, () -> {
+        orderService.paymentMethodJudge(0);
+      });
     }
 
     @Test
-    @DisplayName("paymentMethodJudge: 境界値 - 負の値を指定した場合")
+    @DisplayName("paymentMethodJudge: 境界値 - 負の値を指定した場合、不正な値として例外がスローされる")
     void paymentMethodJudge_negative() {
-      assertEquals(OrderStatus.PAID, orderService.paymentMethodJudge(-1));
+      assertThrows(IllegalArgumentException.class, () -> {
+        orderService.paymentMethodJudge(-1);
+      });
+    }
+
+    @Test
+    @DisplayName("order: 注文完了イベントが発行される")
+    void order_publishesOrderCompletedEvent() {
+      // リファクタリング課題#7 対応：order()呼び出し後にイベントが発行されることを検証する
+      Order order = createSampleOrder(null);
+      when(orderRepository.insert(order)).thenReturn(100);
+
+      Cart cart = new Cart();
+      cart.setId(1);
+      when(cartService.getOrCreateCart(10)).thenReturn(cart);
+      when(cartService.findItemsByCartId(1)).thenReturn(new ArrayList<>());
+
+      orderService.order(order, 10, "test@example.com");
+
+      verify(eventPublisher, times(1))
+          .publishEvent(any(com.example.event.OrderCompletedEvent.class));
     }
   }
 
   private Order createSampleOrder(Integer id) {
-    // Order order = new Order();
-    // if (id != null) {
-    // order.setId(id);
-
-    // }
-
-    // order.setUserId(10);
-    // order.setStatus(OrderStatus.IN_CART);
-    // order.setTotalPrice(1500);
-    // order.setOrderDate(new java.sql.Date(System.currentTimeMillis()));
-    // order.setDestinationName("テスト太郎");
-    // order.setDestinationEmail("test@example.com");
-    // order.setDestinationZipcode("123-4567");
-    // order.setDestinationAddress("東京都渋谷区1-2-3");
-    // order.setDestinationTel("090-0000-0000");
-    // order.setDeliveryTime(new Timestamp(System.currentTimeMillis()));
-    // order.setPaymentMethod(1);
-    // return order;
-
     Order order = Order.builder()
         .userId(10)
         .status(OrderStatus.IN_CART)

@@ -9,11 +9,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.example.repository.OrderRepository;
+import com.example.validation.PhoneNumber;
+import com.example.validation.PostalCode;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 
 public class OrderForm {
 
@@ -28,14 +29,20 @@ public class OrderForm {
 	private String destinationEmail;
 	// お届け先 郵便番号
 	@NotBlank(message = "{error.empty.zipCode}")
-	@Pattern(regexp = "^[0-9]{3}-[0-9]{4}$", message = "{error.zipCode}")
+	// @Pattern(regexp = "^[0-9]{3}-[0-9]{4}$", message = "{error.zipCode}")
+	
+	// リファクタリング課題#12 カスタムバリデーションの実装
+	@PostalCode
 	private String destinationZipcode;
 	// お届け先 住所
 	@NotBlank(message = "{error.empty.address}")
 	private String destinationAddress;
 	// お届け先 電話番号
 	@NotBlank(message = "{error.empty.phone}")
-	@Pattern(regexp = "^[0-9]+-[0-9]+-[0-9]+$", message = "{error.telephone}")
+	// @Pattern(regexp = "^[0-9]+-[0-9]+-[0-9]+$", message = "{error.telephone}")
+	
+	// リファクタリング課題#12 カスタムバリデーションの実装
+	@PhoneNumber
 	private String destinationTel;
 	// 日付
 	private Date orderDate;

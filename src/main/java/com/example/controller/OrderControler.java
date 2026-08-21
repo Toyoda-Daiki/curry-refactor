@@ -161,7 +161,7 @@ public class OrderControler {
 
 		Integer orderId = null;
 		try {
-			orderId = service.order(order, user.getId());
+			orderId = service.order(order, user.getId(), user.getEmail());
 		} catch (com.example.exception.StockShortageException e) {
 			// 在庫不足例外をキャッチ
 			log.warn("注文エラー: 在庫不足エラー発生 - {}", e.getMessage());
@@ -211,13 +211,15 @@ public class OrderControler {
 
 		}
 
+		// リファクタリング課題#7 Observerパターン：メール送信はorder()内でのイベント発行経由で
+		// OrderMailListenerが行うようになったため、直接のsendMail()呼び出しは不要になった
 		// 注文完了後にメール送信（別トランザクション、失敗しても注文自体は成立）
-		try {
-			service.sendMail(user.getEmail(), orderId);
-		} catch (Exception e) {
-			log.error("メール送信時にエラーが発生しました: orderId={}", orderId, e);
-			// 注文自体は完了しているため、エラー画面にはせず続行
-		}
+		// try {
+		// service.sendMail(user.getEmail(), orderId);
+		// } catch (Exception e) {
+		// log.error("メール送信時にエラーが発生しました: orderId={}", orderId, e);
+		// // 注文自体は完了しているため、エラー画面にはせず続行
+		// }
 
 		return "redirect:/orderCompletion";
 
@@ -246,15 +248,19 @@ public class OrderControler {
 			return "forward:/toLogin";
 		}
 
+		// リファクタリング課題#2（対応漏れ修正）
+		// findByOrder()がnullを返さなくなったため、isEmpty()でチェックする
 		List<Order> orderList = service.findByOrder(user.getId());
-		if (orderList == null) {
+		// if (orderList == null) {
+		if (orderList.isEmpty()) {
 			model.addAttribute("orderNothing", "error.orderNothing");
 		} else {
 			model.addAttribute("orderList", orderList);
 		}
 
 		log.info("注文履歴表示: userId={}, orderCount={}",
-				user.getId(), orderList == null ? 0 : orderList.size());
+				// user.getId(), orderList == null ? 0 : orderList.size());
+				user.getId(), orderList.size());
 
 		return "order/order_history";
 	}

@@ -10,9 +10,9 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
@@ -26,6 +26,7 @@ import com.example.domain.OrderItem;
 import com.example.domain.OrderTopping;
 import com.example.domain.PaymentMethod;
 import com.example.domain.Topping;
+import com.example.event.OrderCompletedEvent;
 import com.example.repository.OrderItemRepository;
 import com.example.repository.OrderRepository;
 import com.example.repository.OrderToppingRepository;
@@ -75,8 +76,12 @@ public class OrderService {
 	private final CartService cartService;
 	private final ResourceLoader resourceLoader;
 	private final Map<PaymentMethod, PaymentProcessor> paymentProcessorMap;
+	private final ApplicationEventPublisher eventPublisher;
 
-	public OrderService (OrderRepository orderRepository, OrderItemRepository orderItemRepository, OrderToppingRepository orderToppingRepository, ToppingRepository toppingRepository, MailSender sender, CartService cartService, ResourceLoader resourceLoader, List<PaymentProcessor> paymentProcessors) {
+	public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
+			OrderToppingRepository orderToppingRepository, ToppingRepository toppingRepository, MailSender sender,
+			CartService cartService, ResourceLoader resourceLoader, List<PaymentProcessor> paymentProcessors,
+			ApplicationEventPublisher eventPublisher) {
 		this.orderRepository = orderRepository;
 		this.orderItemRepository = orderItemRepository;
 		this.orderToppingRepository = orderToppingRepository;
@@ -85,7 +90,8 @@ public class OrderService {
 		this.cartService = cartService;
 		this.resourceLoader = resourceLoader;
 		this.paymentProcessorMap = paymentProcessors.stream()
-        .collect(Collectors.toMap(PaymentProcessor::getSupportedMethod, p -> p));
+				.collect(Collectors.toMap(PaymentProcessor::getSupportedMethod, p -> p));
+		this.eventPublisher = eventPublisher;
 	}
 
 	@Value("${spring.mail.from:noreply@example.com}")
@@ -119,7 +125,9 @@ public class OrderService {
 	 * 
 	 * @param order
 	 */
-	public Integer order(Order order, Integer userId) {
+	// リファクタリング課題#7 Observerパターン：注文完了時の後続処理をイベント発行に変更
+	// emailはOrderCompletedEvent発行のためOrderControlerから受け取る
+	public Integer order(Order order, Integer userId, String email) {
 		// order.setStatus(paymentMethodJudge(order));
 		// order.setUserId(userId);
 		Integer orderId = orderRepository.insert(order);
@@ -134,6 +142,9 @@ public class OrderService {
 		}
 
 		log.info("注文処理完了: orderId={}, userId={}", orderId, order.getUserId());
+
+		// リファクタリング課題#7 注文完了イベントを発行（メール送信等の後続処理はリスナーに委譲）
+		eventPublisher.publishEvent(new OrderCompletedEvent(this, email, orderId));
 		return orderId;
 	}
 
@@ -145,12 +156,12 @@ public class OrderService {
 	 */
 
 	// public OrderStatus paymentMethodJudge(Integer paymentMethod) {
-	// 	// if (order.getPaymentMethod() == 1) {
-	// 	if (Integer.valueOf(1).equals(paymentMethod)) {
-	// 		return OrderStatus.PAID;
-	// 	} else {
-	// 		return OrderStatus.CASH_ON_DELIVERY;
-	// 	}
+	// // if (order.getPaymentMethod() == 1) {
+	// if (Integer.valueOf(1).equals(paymentMethod)) {
+	// return OrderStatus.PAID;
+	// } else {
+	// return OrderStatus.CASH_ON_DELIVERY;
+	// }
 	// }
 
 	public OrderStatus paymentMethodJudge(Integer paymentMethod) {
@@ -168,10 +179,14 @@ public class OrderService {
 
 	private void insertOrderItem(Integer orderId, List<CartItem> cartItemList) {
 		for (CartItem cartItem : cartItemList) {
-			OrderItem orderItem = new OrderItem();
-			BeanUtils.copyProperties(cartItem, orderItem);
+			// OrderItem orderItem = new OrderItem();
+			// BeanUtils.copyProperties(cartItem, orderItem);
 
-			orderItem.setOrderId(orderId);
+			// orderItem.setOrderId(orderId);
+
+			// リファクタリング課題#17 オブジェクト生成の責務（Factory Method）
+			OrderItem orderItem = OrderItem.from(cartItem, orderId);
+
 			Integer orderItemid = orderItemRepository.order(orderItem);
 
 			log.debug("注文商品登録: orderId={}, itemId={}, quantity={}",
@@ -250,7 +265,14 @@ public class OrderService {
 			}
 
 			// 3. 支払い方法の名称変換
-			String paymentMethodText = (orderList.get(0).getPaymentMethod() == 1) ? "代金引換" : "クレジットカード払い";
+			// String paymentMethodText = (orderList.get(0).getPaymentMethod() == 1) ?
+			// "代金引換" : "クレジットカード払い";
+
+			// リファクタリング課題#19（対応漏れ修正）Integerの==比較によるオートボクシング問題を解消
+			// ※表示テキストの内容（1=代金引換／それ以外=クレジットカード払い）自体は変更せず、比較方法のみ修正
+			String paymentMethodText = Integer.valueOf(1).equals(orderList.get(0).getPaymentMethod())
+					? "代金引換"
+					: "クレジットカード払い";
 
 			// 4. 各種日時のフォーマット
 			SimpleDateFormat sdfDelivery = new SimpleDateFormat("yyyy年MM月dd日 HH時");

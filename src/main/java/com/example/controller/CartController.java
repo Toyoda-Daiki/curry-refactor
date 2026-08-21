@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -53,16 +52,20 @@ public class CartController {
 	@RequestMapping("/inCart")
 	public String inCart(ItemCartInForm form) {
 
-		CartItem cartItem = new CartItem();
-		BeanUtils.copyProperties(form, cartItem);
-		cartItem.setId(null); // form.id(商品ID)がcartItem.id(主キー)にコピーされるのを防ぐ
-		cartItem.setItemId(form.getId());
+		// リファクタリング課題#17 オブジェクト生成の責務（Factory Method）
+		CartItem cartItem = CartItem.from(form, service.getPriceSize(form));
 
-		// cartItemにitemの金額を設置
-		cartItem.setItemPrice(service.getPriceSize(form));
+		// CartItem cartItem = new CartItem();
+		// BeanUtils.copyProperties(form, cartItem);
+		// cartItem.setId(null); // form.id(商品ID)がcartItem.id(主キー)にコピーされるのを防ぐ
+		// cartItem.setItemId(form.getId());
+
+		// // cartItemにitemの金額を設置
+		// cartItem.setItemPrice(service.getPriceSize(form));
 
 		// トッピングをcartItemに代入
-		// List<Topping> toppingList = (List<Topping>) application.getAttribute("toppingList");
+		// List<Topping> toppingList = (List<Topping>)
+		// application.getAttribute("toppingList");
 
 		// リファクタリング課題#28 型安全コレクション：applicationスコープの生キャストをitemService.findAllTopping()に変更
 		List<Topping> toppingList = itemService.findAllTopping();

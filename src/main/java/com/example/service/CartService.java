@@ -88,7 +88,7 @@ public class CartService {
 
 		// リファクタリング課題#40 O(n²)のネストループをMapを使ったO(n)に改善
 		Map<Integer, Topping> toppingMap = toppingList.stream()
-				.collect(Collectors.toMap(Topping::getId, t -> t));
+				.collect(Collectors.toMap(Topping::getId, t -> t, (a, b) -> a));
 
 		for (String index : toppingIndex) {
 			Topping topping = toppingMap.get(Integer.parseInt(index));
