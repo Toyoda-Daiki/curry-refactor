@@ -251,15 +251,12 @@ public class OrderRepository {
 
 		List<Order> orderList = template.query(sql, param, ORDER_RESULTSET);
 
-		if (orderList.size() == 0) {
-		// log.debug("注文履歴取得結果なし: userId={}", userId);
-		// return null;
-		// }
-
 		// リファクタリング課題#2（対応漏れ修正）
 		// 0件のとき null ではなく空リストを返す。呼び出し元でのnullチェック連鎖を撲滅するため
+		if (orderList.size() == 0) {
 			log.debug("注文履歴取得結果なし: userId={}", userId);
 		}
+		// return null;
 		return orderList;
 	}
 
