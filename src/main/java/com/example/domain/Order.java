@@ -143,10 +143,10 @@ public class Order {
 
 		// 必須フィールドのバリデーションを行いOrderを生成
 		public Order build() {
-			// if (userId == null)
-			// 	throw new IllegalStateException("userIdは必須です");
-			// if (status == null)
-			// 	throw new IllegalStateException("statusは必須です");
+			if (userId == null)
+				throw new IllegalStateException("userIdは必須です");
+			if (status == null)
+				throw new IllegalStateException("statusは必須です");
 			if (destinationName == null)
 				throw new IllegalStateException("destinationNameは必須です");
 			if (destinationEmail == null)
